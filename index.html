@@ -389,7 +389,7 @@ img,svg,canvas{max-width:100%}
         <form id="txnForm">
           <div class="formgrid">
             <div class="field"><label for="type">Transaction</label><select id="type"><option value="expense">Expense</option><option value="income">Income received</option></select></div>
-            <div class="field"><label for="amount">Amount (₱)</label><input id="amount" type="number" min="1" step="0.01" placeholder="e.g. 120" required></div>
+            <div class="field"><label for="amount">Amount (₱)</label><input id="amount" type="number" inputmode="decimal" enterkeyhint="done" min="1" step="0.01" placeholder="e.g. 120" required>
             <div class="field"><label for="category">Category</label><select id="category"><option>Food</option><option>Electricity</option><option>Wi-Fi</option><option>Water</option><option>Miscellaneous</option><option>Other</option></select></div>
             <div class="field"><label for="date">Date</label><input id="date" type="date" min="2026-11-01" max="2027-04-30" value="2026-11-01" required></div>
           </div>
