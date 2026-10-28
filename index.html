@@ -870,6 +870,7 @@ if ("serviceWorker" in navigator) {
 }
 </script>
 <script>
+
 (() => {
   const indicator = document.getElementById('pullRefreshIndicator');
   const icon = document.getElementById('pullRefreshIcon');
@@ -877,22 +878,24 @@ if ("serviceWorker" in navigator) {
 
   if (!indicator) return;
 
-window.addEventListener('load', () => {
-  alert('Pull-down script loaded. Refresh function: ' +
-    typeof window.refreshBudgetData);
-});
-
   let startY = 0;
   let pulling = false;
   let refreshing = false;
   const threshold = 85;
 
   document.addEventListener('touchstart', (event) => {
-    if (window.scrollY > 0 || refreshing) return;
-    if (event.touches.length !== 1) return;
+    if (window.scrollY > 0 || refreshing) {
+      pulling = false;
+      return;
+    }
+
+    if (event.touches.length !== 1) {
+      pulling = false;
+      return;
+    }
 
     startY = event.touches[0].clientY;
-    pulling = startY <= 80;
+    pulling = true;
   }, { passive: true });
 
   document.addEventListener('touchmove', (event) => {
@@ -920,19 +923,28 @@ window.addEventListener('load', () => {
     const endY = event.changedTouches[0]?.clientY ?? startY;
     const distance = endY - startY;
     pulling = false;
-    startY = 0;
 
     if (distance >= threshold && window.scrollY <= 0) {
       refreshing = true;
+
       try {
-        await window.refreshBudgetData();
+        if (typeof window.refreshBudgetData === 'function') {
+          await window.refreshBudgetData();
+        } else {
+          if (message) message.textContent = 'Refresh function unavailable';
+          indicator.classList.add('visible');
+          await new Promise(resolve => setTimeout(resolve, 1500));
+        }
       } finally {
         refreshing = false;
+        indicator.classList.remove('visible');
         indicator.style.transform = '';
+        startY = 0;
       }
     } else {
       indicator.classList.remove('visible');
       indicator.style.transform = '';
+      startY = 0;
     }
   }, { passive: true });
 
@@ -943,6 +955,7 @@ window.addEventListener('load', () => {
     indicator.style.transform = '';
   }, { passive: true });
 })();
+
 </script>
 </body>
 </html>
