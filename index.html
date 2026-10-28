@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>My Dorm Budget</title>
+<meta name="theme-color" content="#347df0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="My Dorm Budget">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+
 <style>
 :root{color-scheme:light;--bg:#f4f6fb;--card:#ffffff;--ink:#171923;--muted:#777d8c;--line:#e5e8f0;--green:#347df0;--green2:#e7efff;--orange:#d28b16;--red:#d94666;--shadow:0 10px 30px rgba(25,42,75,.07);--track:#edf0f7;--nav:rgba(255,255,255,.94);--field:#fff;--hero:#347df0}
 :root[data-theme="dark"]{color-scheme:dark;--bg:#08090c;--card:#111216;--ink:#f6f7fb;--muted:#a0a2ad;--line:#25262d;--green:#4387ff;--green2:#182743;--orange:#f0a11b;--red:#f04470;--shadow:0 12px 30px rgba(0,0,0,.22);--track:#222a3b;--nav:rgba(13,14,18,.94);--field:#17181e;--hero:#3d82f6}
@@ -81,17 +88,9 @@ body{padding-bottom:calc(104px + env(safe-area-inset-bottom))}
 @media(max-width:520px){.dashboard-balance-card{grid-template-columns:1fr;padding:22px!important;border-radius:25px!important}.dashboard-safe{grid-row:2;min-width:0;display:grid;grid-template-columns:1fr auto;align-items:center}.dashboard-safe small{grid-column:1/-1}.dashboard-balance-main .metric{margin-bottom:18px}.dashboard-donut-layout{gap:12px}.dashboard-month-donut{min-height:180px}.dashboard-month-donut svg{max-width:275px!important}.dashboard-legend{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 8px}.dashboard-legend-item{font-size:11px;gap:7px}.dashboard-legend-amount{font-size:11px}.dashboard-spending-card{padding:17px!important}}
 
 .dashboard-daily-focus-row{display:grid;grid-template-columns:minmax(125px, .8fr) minmax(0,1.2fr);align-items:center;gap:18px;margin-top:12px}.dashboard-daily-focus-row #dashboardDailyDonut,.dashboard-daily-focus-row #dashboardMonthlyDonut{display:flex;justify-content:center;align-items:center;min-width:0;width:100%}.dashboard-daily-focus-row #dashboardDailyDonut svg,.dashboard-daily-focus-row #dashboardMonthlyDonut svg{display:block;width:100%;max-width:190px;height:auto;flex:0 0 auto}.dashboard-daily-focus-info{min-width:0}.dashboard-daily-remaining{display:block;font-size:clamp(25px,5vw,36px);letter-spacing:-.04em;margin:3px 0 7px}.dashboard-daily-focus.over-limit{border-color:var(--red)!important;box-shadow:0 0 0 1px color-mix(in srgb,var(--red) 28%,transparent)}.dashboard-daily-focus.over-limit .dashboard-daily-remaining{color:var(--red)}@media(max-width:520px){.dashboard-daily-focus-row{grid-template-columns:115px minmax(0,1fr);gap:12px}.dashboard-daily-focus-row #dashboardDailyDonut svg,.dashboard-daily-focus-row #dashboardMonthlyDonut svg{max-width:125px}.dashboard-daily-focus{padding:15px!important}}
+
+.cloud-panel .btn{white-space:nowrap}.cloud-panel .btnrow{align-items:center}.cloud-panel .notice{margin-top:12px}.cloud-choice-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.cloud-choice-row .btn{font-size:13px;padding:9px 11px}.cloud-panel .small{line-height:1.5}
 </style>
-
-<meta name="theme-color" content="#347df0">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Budget Tracker">
-<meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
-
 </head>
 <body>
 <div class="wrap">
@@ -99,6 +98,13 @@ body{padding-bottom:calc(104px + env(safe-area-inset-bottom))}
     <div><div class="eyebrow">My Dorm Budget</div><h1>Dashboard</h1><div class="sub" id="dashboardMonth">November 2026</div></div>
     <div class="top-actions"><button class="theme-toggle" id="themeToggle" type="button" aria-label="Change color theme">◐ Theme: Auto</button><div class="pill">PHP · 6-month plan</div></div>
   </header>
+  <section class="panel cloud-panel" aria-labelledby="cloudTitle" style="margin:0 0 14px;border-radius:18px">
+    <div class="split" style="align-items:flex-start;flex-wrap:wrap">
+      <div><h2 id="cloudTitle" style="margin:0 0 5px">Cloud sync</h2><div id="cloudStatus" class="small" role="status" aria-live="polite">Sign in with Google to sync your budget across devices. You will stay signed in on this browser until you sign out. Your current browser data stays local until you approve the first sync.</div></div>
+      <div class="btnrow"><button class="btn" type="button" id="googleSignInBtn">Continue with Google</button><button class="btn secondary hidden" type="button" id="reconcileBtn">Choose sync</button><button class="btn secondary hidden" type="button" id="cloudSyncBtn">Sync now</button><button class="btn danger hidden" type="button" id="googleSignOutBtn">Sign out</button></div>
+    </div>
+    <div id="syncChoices" class="notice hidden" style="margin-bottom:0" role="region" aria-label="First sync choices"></div>
+  </section>
   <section class="cards dashboard-balance-card">
     <div class="dashboard-balance-main"><div class="metric-label">Total Balance</div><div class="metric" id="balance">₱35,000</div><div class="dashboard-balance-details"><div><span class="dashboard-detail-label">↙ INCOME</span><strong id="dashboardIncome">₱0</strong></div><div><span class="dashboard-detail-label">↗ EXPENSES</span><strong id="spent">₱0</strong></div></div></div>
     <div class="dashboard-safe"><span>Safe to spend</span><strong id="safe">₱25,000</strong><small>Emergency reserve protected</small></div>
@@ -219,8 +225,9 @@ body{padding-bottom:calc(104px + env(safe-area-inset-bottom))}
       </section>
     </div>
   </div>
-  <p class="foot">Your entries are saved in this browser on this device. Export a backup regularly so you can restore your data if browser storage is cleared. This tracker does not connect to your bank or send your transactions anywhere.</p>
+  <p class="foot">Your entries are saved in this browser and, if you sign in and approve syncing, in your private Supabase account. Export a backup regularly as an extra safeguard. This tracker does not connect to your bank.</p>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // Theme preference: Auto follows device settings; Light and Dark can be selected manually.
 (function setupTheme(){
@@ -275,8 +282,81 @@ let state={transactions:[],selected:'2026-11',received:false,dailyDate:'2026-11-
 const $=id=>document.getElementById(id);
 const money=n=>new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP',maximumFractionDigits:2}).format(n).replace('PHP','₱').replace(/\s/g,'');
 const read=()=>{try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.transactions)){state={...state,...s};if(s.config){config={...defaults,...s.config};delete config.expectedIncome;}}}catch(e){}}
-const save=()=>localStorage.setItem(KEY,JSON.stringify({...state,config}));
+let cloudClient=null,cloudUser=null,cloudSyncReady=false,cloudSyncBusy=false,cloudSyncTimer=null,cloudSession=null;
+const SUPABASE_URL='https://mpbbznohmzojldcbptnk.supabase.co';
+const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1wYmJ6bm9obXpvamxkY2JwdG5rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMxNjE1MDQsImV4cCI6MjEwODczNzUwNH0.jjtREyXST5WO-pS37h-YwCYUIPeSnsvWRTAbjJO4wfQ';
+const cloudStatus=(message)=>{const el=$('cloudStatus');if(el)el.textContent=message;};
+const cloudButtons=({signedIn=false,ready=false}={})=>{ $('googleSignInBtn')?.classList.toggle('hidden',signedIn);$('googleSignOutBtn')?.classList.toggle('hidden',!signedIn);$('cloudSyncBtn')?.classList.toggle('hidden',!signedIn||!ready);$('reconcileBtn')?.classList.toggle('hidden',!signedIn||ready); };
+const payloadNow=()=>JSON.parse(JSON.stringify({...state,config}));
+const meaningful=(p)=>!!(p&&(Array.isArray(p.transactions)&&p.transactions.length>0 || p.config&&Object.entries(defaults).some(([k,v])=>Number(p.config[k]??v)!==Number(v)) || p.selected&&p.selected!=='2026-11' || p.dailyDate&&p.dailyDate!=='2026-11-01'));
+const localPayload=()=>{try{const raw=localStorage.getItem(KEY);if(!raw)return null;const p=JSON.parse(raw);if(!p||!Array.isArray(p.transactions))return null;return {...p,config:{...defaults,...(p.config||{})}};}catch(e){return null;}};
+const syncMetaKey=()=> 'myDormBudget_cloud_sync_v1_'+(cloudUser?.id||'');
+const stableValue=v=>Array.isArray(v)?v.map(stableValue):(v&&typeof v==='object'?Object.keys(v).sort().reduce((o,k)=>(o[k]=stableValue(v[k]),o),{}):v);
+const samePayload=(a,b)=>JSON.stringify(stableValue(a||null))===JSON.stringify(stableValue(b||null));
+const readSyncMeta=()=>{try{return JSON.parse(localStorage.getItem(syncMetaKey())||'null');}catch(e){return null;}};
+const writeSyncMeta=payload=>{if(cloudUser)localStorage.setItem(syncMetaKey(),JSON.stringify({lastPayload:payload,at:Date.now()}));};
+const applyPayload=(p)=>{if(!p||!Array.isArray(p.transactions))throw new Error('The saved budget data is not in a supported format.');state={...state,...p,transactions:p.transactions};config={...defaults,...(p.config||{})};delete config.expectedIncome;saveLocalOnly();loadConfigFields();$('dailyDate').value=state.dailyDate||'2026-11-01';$('dailyDateOverview').value=state.dailyDate||'2026-11-01';if($('dailyDateFocus'))$('dailyDateFocus').value=state.dailyDate||'2026-11-01';render();if(typeof renderStats==='function')renderStats();};
+const saveLocalOnly=()=>localStorage.setItem(KEY,JSON.stringify({...state,config}));
+const save=()=>{saveLocalOnly();if(cloudSyncReady&&!cloudSyncBusy){clearTimeout(cloudSyncTimer);cloudSyncTimer=setTimeout(()=>pushCloud().catch(err=>cloudStatus('Saved on this device, but cloud sync failed: '+(err.message||'Please try Sync now.'))),900);}};
+function mergePayloads(local,cloud){const byId=new Map();[...(local.transactions||[]),...(cloud.transactions||[])].forEach(t=>{const id=String(t.id??'');const key=id||[t.date,t.type,t.amount,t.category,t.note].join('|');if(!byId.has(key))byId.set(key,t);});return {transactions:[...byId.values()].sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))||Number(a.id||0)-Number(b.id||0)),selected:local.selected||cloud.selected||'2026-11',received:!!(local.received||cloud.received),dailyDate:local.dailyDate||cloud.dailyDate||'2026-11-01'};}
+async function pushCloud(){if(!cloudClient||!cloudUser||!cloudSyncReady||cloudSyncBusy)return;cloudSyncBusy=true;try{const payload=payloadNow();const {error}=await cloudClient.from('budget_data').upsert({user_id:cloudUser.id,payload,updated_at:new Date().toISOString()},{onConflict:'user_id'});if(error)throw error;writeSyncMeta(payload);cloudStatus('Synced to your private cloud account. Last sync: '+new Date().toLocaleTimeString());}finally{cloudSyncBusy=false;}}
+async function reconcileCloud(){if(!cloudClient||!cloudUser)return;cloudSyncReady=false;cloudButtons({signedIn:true,ready:false});$('syncChoices')?.classList.add('hidden');cloudStatus('Checking your local and cloud copies…');try{const [{data:row,error},localRaw]=await Promise.all([cloudClient.from('budget_data').select('payload,updated_at').eq('user_id',cloudUser.id).maybeSingle(),Promise.resolve(localPayload())]);if(error)throw error;const local=localRaw||{transactions:[],selected:'2026-11',received:false,dailyDate:'2026-11-01',config:{...defaults}};const cloud=row?.payload?{...row.payload,config:{...defaults,...(row.payload.config||{})}}:null;const localHas=meaningful(local),cloudHas=meaningful(cloud);let chosen=null;
+ if(localHas&&cloudHas){const choice=prompt('Both this device and your Supabase account contain budget data. Nothing has been changed yet. Type one option exactly:\n\nMERGE — combine transactions from both copies (you will choose which budget settings to keep)\nLOCAL — use this device’s data for the cloud account\nCLOUD — replace this device’s data with the cloud copy\nCANCEL — leave syncing paused','MERGE');if(!choice||choice.trim().toUpperCase()==='CANCEL'){cloudStatus('Signed in, but syncing is paused. Your local and cloud data were left unchanged. Tap “Choose sync” when ready.');return;}const c=choice.trim().toUpperCase();if(c==='LOCAL')chosen=local;else if(c==='CLOUD')chosen=cloud;else if(c==='MERGE'){const merged=mergePayloads(local,cloud);const configChoice=prompt('The two copies may have different budget settings. Type LOCAL to keep this device’s settings, or CLOUD to keep the cloud settings.','LOCAL');if(!configChoice||!['LOCAL','CLOUD'].includes(configChoice.trim().toUpperCase())){cloudStatus('Sync paused. Your local and cloud data were left unchanged. Tap “Choose sync” to try again.');return;}chosen={...merged,config:{...(configChoice.trim().toUpperCase()==='CLOUD'?cloud.config:local.config)}};}else{cloudStatus('Unrecognized choice. No data was changed. Tap “Choose sync” to try again.');return;}
+ }else if(localHas&&!cloudHas){if(!confirm('Your budget data is on this device, while the cloud copy is empty. Upload this device’s data to your account?')){cloudStatus('Signed in, but syncing is paused. Your local data was left unchanged. Tap “Choose sync” to try again.');return;}chosen=local;
+ }else if(!localHas&&cloudHas){if(!confirm('Your cloud account contains budget data, while this device has no meaningful saved data. Download the cloud copy to this device?')){cloudStatus('Signed in, but syncing is paused. Your cloud data was left unchanged. Tap “Choose sync” to try again.');return;}chosen=cloud;
+ }else{chosen=local;}
+ if(chosen){state={...state,...chosen,transactions:Array.isArray(chosen.transactions)?chosen.transactions:[]};config={...defaults,...(chosen.config||{})};delete config.expectedIncome;saveLocalOnly();loadConfigFields();$('dailyDate').value=state.dailyDate||'2026-11-01';$('dailyDateOverview').value=state.dailyDate||'2026-11-01';if($('dailyDateFocus'))$('dailyDateFocus').value=state.dailyDate||'2026-11-01';render();if(typeof renderStats==='function')renderStats();}
+ cloudSyncReady=true;cloudButtons({signedIn:true,ready:true});await pushCloud();cloudStatus('Your budget is synced to your private cloud account.');
+ }catch(err){cloudSyncReady=false;cloudButtons({signedIn:true,ready:false});cloudStatus('Could not sync: '+(err.message||'Check your connection and Supabase settings.'));}}
+async function restoreReturningSession(){
+ if(!cloudClient||!cloudUser)return;
+ const meta=readSyncMeta();
+ if(!meta?.lastPayload){await reconcileCloud();return;}
+ try{
+  cloudStatus('Restoring your signed-in session and checking for changes…');
+  const {data:row,error}=await cloudClient.from('budget_data').select('payload,updated_at').eq('user_id',cloudUser.id).maybeSingle();
+  if(error)throw error;
+  if(!row?.payload){await reconcileCloud();return;}
+  const local=localPayload()||{transactions:[],selected:'2026-11',received:false,dailyDate:'2026-11-01',config:{...defaults}};
+  const cloud={...row.payload,config:{...defaults,...(row.payload.config||{})}};
+  const base=meta.lastPayload;
+  const localChanged=!samePayload(local,base),cloudChanged=!samePayload(cloud,base);
+  if(localChanged&&cloudChanged&&!samePayload(local,cloud)){await reconcileCloud();return;}
+  if(cloudChanged&&!localChanged){applyPayload(cloud);}
+  cloudSyncReady=true;cloudButtons({signedIn:true,ready:true});
+  if(localChanged&&!cloudChanged){await pushCloud();}
+  else if(!samePayload(localPayload(),cloud)){await pushCloud();}
+  else cloudStatus('Signed in as '+(cloudUser.email||'your Google account')+'. Your session is saved on this browser; cloud data is up to date.');
+ }catch(err){cloudSyncReady=false;cloudButtons({signedIn:true,ready:false});cloudStatus('You are still signed in, but sync needs attention: '+(err.message||'Please try Choose sync.'));}
+}
+async function initCloud(){
+ try{
+  if(!window.supabase?.createClient){cloudStatus('Cloud sign-in library could not load. Check your internet connection and refresh.');return;}
+  cloudClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}});
+  $('googleSignInBtn')?.addEventListener('click',async()=>{
+   cloudStatus('Opening Google sign-in…');
+   const {error}=await cloudClient.auth.signInWithOAuth({provider:'google',options:{redirectTo:window.location.origin+window.location.pathname}});
+   if(error)cloudStatus('Google sign-in failed: '+error.message);
+  });
+  $('googleSignOutBtn')?.addEventListener('click',async()=>{
+   cloudSyncReady=false;const {error}=await cloudClient.auth.signOut();
+   if(error){cloudStatus('Sign-out failed: '+error.message);return;}
+   cloudUser=null;cloudSession=null;cloudButtons();cloudStatus('Signed out. Your saved data remains on this device.');
+  });
+  $('reconcileBtn')?.addEventListener('click',()=>reconcileCloud());
+  $('cloudSyncBtn')?.addEventListener('click',()=>pushCloud().catch(err=>cloudStatus('Sync failed: '+err.message)));
+  cloudClient.auth.onAuthStateChange((_event,session)=>{
+   cloudSession=session;
+   setTimeout(async()=>{
+    if(session?.user){cloudUser=session.user;cloudButtons({signedIn:true,ready:false});cloudStatus('Signed in as '+(session.user.email||'your Google account')+'. Checking data before syncing…');if(readSyncMeta()?.lastPayload)await restoreReturningSession();else await reconcileCloud();}
+    else{cloudUser=null;cloudSyncReady=false;cloudButtons();cloudStatus('Sign in with Google to sync your budget across devices. You will stay signed in on this browser until you sign out. Your current browser data stays local until you approve the first sync.');}
+   },0);
+  });
+  // INITIAL_SESSION from Supabase is the single startup path, avoiding duplicate first-sync prompts.
+ }catch(err){cloudStatus('Cloud setup error: '+(err.message||'Please refresh and try again.'));}
+}
 const isIncome=t=>t.type==='income';const expenses=()=>state.transactions.filter(t=>!isIncome(t));
+
 const total=arr=>arr.reduce((sum,t)=>sum+Number(t.amount||0),0);const monthOf=d=>d.slice(0,7);
 const currentMonth=()=>months.find(m=>m.key===state.selected)||months[0];
 const catSpend=(filter,cat)=>total(expenses().filter(t=>(!filter||filter(t))&&t.category===cat));
@@ -399,15 +479,15 @@ $('dailyDate').addEventListener('change',()=>syncDailyDate($('dailyDate').value)
 $('exportBtn').addEventListener('click',()=>{const blob=new Blob([JSON.stringify({version:2,exportedAt:new Date().toISOString(),config,state},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='my-dorm-budget-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);});
 $('importBtn').addEventListener('click',()=>{const picker=$('importFile');if(picker)picker.click();});$('importFile').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{const d=JSON.parse(await f.text()),s=d.state||d;if(!Array.isArray(s.transactions))throw Error('Invalid backup');state={...state,...s};if(d.config)config={...defaults,...d.config};else if(s.config){config={...defaults,...s.config};delete config.expectedIncome;}save();loadConfigFields();$('dailyDate').value=state.dailyDate||'2026-11-01';render();alert('Backup restored.');}catch(err){alert('Could not restore that file. Please choose a backup exported from this tracker.');}e.target.value='';});
 $('resetBtn').addEventListener('click',()=>{if(confirm('This will delete all transactions saved in this browser. Export a backup first if you want to keep them. Continue?')){state={transactions:[],selected:'2026-11',received:false,dailyDate:'2026-11-01'};save();render();}});
-read();loadConfigFields();if($('dailyLimitInput'))$('dailyLimitInput').value=Number(config.dailyLimit||0);$('dailyDate').value=state.dailyDate||'2026-11-01';$('dailyDateOverview').value=state.dailyDate||'2026-11-01';$('dailyDateFocus').value=state.dailyDate||'2026-11-01';render();renderStats();
+read();loadConfigFields();if($('dailyLimitInput'))$('dailyLimitInput').value=Number(config.dailyLimit||0);$('dailyDate').value=state.dailyDate||'2026-11-01';$('dailyDateOverview').value=state.dailyDate||'2026-11-01';$('dailyDateFocus').value=state.dailyDate||'2026-11-01';render();renderStats();initCloud();
 })();
 </script>
-
 <script>
-if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js').catch(err => console.warn('Offline support could not be enabled:', err)));
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./service-worker.js").catch((err) => console.warn("Offline support could not be registered.", err));
+  });
 }
 </script>
-
 </body>
 </html>
