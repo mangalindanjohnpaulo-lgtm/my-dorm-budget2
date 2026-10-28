@@ -457,7 +457,7 @@ async function reconcileCloud(){if(!cloudClient||!cloudUser)return;cloudSyncRead
  }else if(!localHas&&cloudHas){if(!confirm('Your cloud account contains budget data, while this device has no meaningful saved data. Download the cloud copy to this device?')){cloudStatus('Signed in, but syncing is paused. Your cloud data was left unchanged. Tap “Choose sync” to try again.');return;}chosen=cloud;
  }else{chosen=local;}
  if(chosen){state={...state,...chosen,transactions:Array.isArray(chosen.transactions)?chosen.transactions:[]};config={...defaults,...(chosen.config||{})};delete config.expectedIncome;saveLocalOnly();loadConfigFields();$('dailyDate').value=state.dailyDate||'2026-11-01';$('dailyDateOverview').value=state.dailyDate||'2026-11-01';if($('dailyDateFocus'))$('dailyDateFocus').value=state.dailyDate||'2026-11-01';render();if(typeof renderStats==='function')renderStats();}
- cloudSyncReady=true;cloudButtons({signedIn:true,ready:true});await pushCloud();cloudStatus('Your budget is synced to your private cloud account.');
+ cloudSyncReady=true;cloudButtons({signedIn:true,ready:true});startCloudRealtime();await pushCloud();
  }catch(err){cloudSyncReady=false;cloudButtons({signedIn:true,ready:false});cloudStatus('Could not sync: '+(err.message||'Check your connection and Supabase settings.'));}}
 async function restoreReturningSession(){
  if(!cloudClient||!cloudUser)return;
@@ -480,6 +480,101 @@ async function restoreReturningSession(){
   else cloudStatus('Signed in as '+(cloudUser.email||'your Google account')+'. Your session is saved on this browser; cloud data is up to date.');
  }catch(err){cloudSyncReady=false;cloudButtons({signedIn:true,ready:false});cloudStatus('You are still signed in, but sync needs attention: '+(err.message||'Please try Choose sync.'));}
 }
+  
+let cloudRealtimeChannel = null;
+let cloudRealtimeUserId = null;
+
+function stopCloudRealtime() {
+  if (cloudRealtimeChannel && cloudClient) {
+    cloudClient.removeChannel(cloudRealtimeChannel);
+  }
+  cloudRealtimeChannel = null;
+  cloudRealtimeUserId = null;
+}
+
+function startCloudRealtime() {
+  if (!cloudClient || !cloudUser || !cloudSyncReady) return;
+
+  // Avoid creating duplicate listeners for the same account.
+  if (
+    cloudRealtimeChannel &&
+    cloudRealtimeUserId === cloudUser.id
+  ) return;
+
+  stopCloudRealtime();
+
+  const userId = cloudUser.id;
+
+  cloudRealtimeChannel = cloudClient
+    .channel('budget-data-' + userId)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'budget_data',
+        filter: 'user_id=eq.' + userId
+      },
+      async (change) => {
+        // Ignore events if the account or sync session changed.
+        if (
+          !cloudSyncReady ||
+          !cloudUser ||
+          cloudUser.id !== userId
+        ) return;
+
+        const remote = change.new?.payload;
+        if (!remote) return;
+
+        const cloud = {
+          ...remote,
+          config: { ...defaults, ...(remote.config || {}) }
+        };
+
+        const local = localPayload();
+        const meta = readSyncMeta();
+        const base = meta?.lastPayload;
+
+        // Ignore a notification for data already on this device.
+        if (local && samePayload(local, cloud)) return;
+
+        // Do not overwrite local changes that haven't synced.
+        if (
+          local &&
+          base &&
+          !samePayload(local, base) &&
+          !samePayload(local, cloud)
+        ) {
+          cloudStatus(
+            'Changes arrived from another device while this device also has unsynced changes. Please use Sync Now to review them.'
+          );
+          return;
+        }
+
+        applyPayload(cloud);
+        writeSyncMeta(cloud);
+
+        cloudStatus(
+          'Budget updated from your other device.'
+        );
+      }
+    )
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        cloudStatus(
+          'Automatic cross-device updates are connected.'
+        );
+      } else if (status === 'CHANNEL_ERROR' ||
+                 status === 'TIMED_OUT') {
+        cloudStatus(
+          'Live updates are temporarily unavailable. Your existing sync controls are still available.'
+        );
+      }
+    });
+
+  cloudRealtimeUserId = userId;
+}
+
 async function initCloud(){
  try{
   if(!window.supabase?.createClient){cloudStatus('Cloud sign-in library could not load. Check your internet connection and refresh.');return;}
@@ -510,7 +605,7 @@ async function initCloud(){
    cloudUser=session?.user||null;renderProfile(cloudUser);
    setTimeout(async()=>{
     if(session?.user){cloudUser=session.user;cloudButtons({signedIn:true,ready:false});renderProfile(cloudUser);cloudStatus('Signed in as '+(session.user.email||'your Google account')+'. Checking data before syncing…');if(readSyncMeta()?.lastPayload)await restoreReturningSession();else await reconcileCloud();}
-    else{cloudUser=null;cloudSyncReady=false;cloudButtons();renderProfile(null);cloudStatus('Sign in with Google to sync your budget across devices. You will stay signed in on this browser until you sign out. Your current browser data stays local until you approve the first sync.');}
+    else{stopCloudRealtime();cloudUser=null;cloudSyncReady=false;cloudButtons();renderProfile(null);cloudStatus('Sign in with Google to sync your budget across devices. You will stay signed in on this browser until you sign out. Your current browser data stays local until you approve the first sync.');}
    },0);
   });
   // INITIAL_SESSION from Supabase is the single startup path, avoiding duplicate first-sync prompts.
