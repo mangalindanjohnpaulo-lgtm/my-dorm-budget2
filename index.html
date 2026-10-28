@@ -235,9 +235,50 @@ input[type="month"] {
   }
 }
 
+#pullRefreshIndicator {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  z-index: 9999;
+  transform: translate(-50%, -110%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 0 0 14px 14px;
+  background: var(--card, #ffffff);
+  color: var(--text, #222222);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12);
+  font-size: 13px;
+  pointer-events: none;
+  transition: transform 0.18s ease;
+}
+
+#pullRefreshIndicator.visible {
+  transform: translate(-50%, 8px);
+}
+
+#pullRefreshIcon {
+  display: inline-block;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #pullRefreshIndicator {
+    transition: none;
+  }
+}
+
 </style>
 </head>
 <body>
+  
+<div id="pullRefreshIndicator" aria-live="polite">
+  <span id="pullRefreshIcon">↓</span>
+  <span id="pullRefreshText">Pull down to refresh budget</span>
+</div>
+
 <div class="wrap">
   <header class="top">
     <div><div class="eyebrow">My Dorm Budget</div><h1>Dashboard</h1><div class="sub" id="dashboardMonth">November 2026</div></div>
@@ -450,7 +491,90 @@ const applyPayload=(p)=>{if(!p||!Array.isArray(p.transactions))throw new Error('
 const saveLocalOnly=()=>localStorage.setItem(KEY,JSON.stringify({...state,config}));
 const save=()=>{saveLocalOnly();if(cloudSyncReady&&!cloudSyncBusy){clearTimeout(cloudSyncTimer);cloudSyncTimer=setTimeout(()=>pushCloud().catch(err=>cloudStatus('Saved on this device, but cloud sync failed: '+(err.message||'Please try Sync now.'))),900);}};
 function mergePayloads(local,cloud){const byId=new Map();[...(local.transactions||[]),...(cloud.transactions||[])].forEach(t=>{const id=String(t.id??'');const key=id||[t.date,t.type,t.amount,t.category,t.note].join('|');if(!byId.has(key))byId.set(key,t);});return {transactions:[...byId.values()].sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))||Number(a.id||0)-Number(b.id||0)),selected:local.selected||cloud.selected||'2026-11',received:!!(local.received||cloud.received),dailyDate:local.dailyDate||cloud.dailyDate||'2026-11-01'};}
-async function pushCloud(){if(!cloudClient||!cloudUser||!cloudSyncReady||cloudSyncBusy)return;cloudSyncBusy=true;try{const payload=payloadNow();const {error}=await cloudClient.from('budget_data').upsert({user_id:cloudUser.id,payload,updated_at:new Date().toISOString()},{onConflict:'user_id'});if(error)throw error;writeSyncMeta(payload);cloudStatus('Synced to your private cloud account. Last sync: '+new Date().toLocaleTimeString());}finally{cloudSyncBusy=false;}}
+async function pushCloud(){if(!cloudClient||!cloudUser||!cloudSyncReady||cloudSyncBusy)return;cloudSyncBusy=true;try{const payload=payloadNow();const {error}=await cloudClient.from('budget_data').upsert({user_id:cloudUser.id,payload,updated_at:new Date().toISOString()},{onConflict:'user_id'});if(error)throw error;writeSyncMeta(payload);cloudStatus('Synced to your private cloud account. Last sync: '+new Date().toLocaleTimeString());}finally{cloudSyncBusy=false;}}async function pushCloud(){if(!cloudClient||!cloudUser||!cloudSyncReady||cloudSyncBusy)return;cloudSyncBusy=true;try{const payload=payloadNow();const {error}=await cloudClient.from('budget_data').upsert({user_id:cloudUser.id,payload,updated_at:new Date().toISOString()},{onConflict:'user_id'});if(error)throw error;writeSyncMeta(payload);cloudStatus('Synced to your private cloud account. Last sync: '+new Date().toLocaleTimeString());}finally{cloudSyncBusy=false;}}
+async function refreshBudgetData() {
+  const indicator = document.getElementById('pullRefreshIndicator');
+  const icon = document.getElementById('pullRefreshIcon');
+  const message = document.getElementById('pullRefreshText');
+
+  if (message) message.textContent = 'Refreshing budget…';
+  if (icon) icon.textContent = '↻';
+  if (indicator) indicator.classList.add('visible');
+
+  try {
+    if (!cloudClient || !cloudUser || !cloudSyncReady) {
+      if (message) {
+        message.textContent = 'Sign in to refresh cloud data';
+      }
+      return;
+    }
+
+    // Avoid refreshing while an upload is still in progress.
+    if (cloudSyncBusy) {
+      if (message) {
+        message.textContent = 'Sync in progress — try again shortly';
+      }
+      return;
+    }
+
+    const { data: row, error } = await cloudClient
+      .from('budget_data')
+      .select('payload, updated_at')
+      .eq('user_id', cloudUser.id)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (!row?.payload) {
+      if (message) message.textContent = 'No cloud budget found';
+      return;
+    }
+
+    const cloud = {
+      ...row.payload,
+      config: { ...defaults, ...(row.payload.config || {}) }
+    };
+
+    const local = localPayload();
+    const meta = readSyncMeta();
+    const base = meta?.lastPayload;
+
+    // Never silently discard local changes that haven't synced.
+    if (
+      local &&
+      base &&
+      !samePayload(local, base) &&
+      !samePayload(local, cloud)
+    ) {
+      if (message) {
+        message.textContent = 'Local changes need syncing first';
+      }
+      cloudStatus(
+        'Refresh paused because this device has unsynced changes. Please sync before refreshing.'
+      );
+      return;
+    }
+
+    if (!local || !samePayload(local, cloud)) {
+      applyPayload(cloud);
+    }
+
+    writeSyncMeta(cloud);
+
+    if (message) message.textContent = 'Budget refreshed ✓';
+    cloudStatus('Your latest cloud budget has been loaded.');
+  } catch (err) {
+    if (message) message.textContent = 'Refresh failed';
+    cloudStatus('Could not refresh: ' + (err.message || 'Check your connection.'));
+  } finally {
+    setTimeout(() => {
+      if (indicator) indicator.classList.remove('visible');
+      if (message) message.textContent = 'Pull down to refresh budget';
+      if (icon) icon.textContent = '↓';
+    }, 1200);
+  }
+}
+
 async function reconcileCloud(){if(!cloudClient||!cloudUser)return;cloudSyncReady=false;cloudButtons({signedIn:true,ready:false});$('syncChoices')?.classList.add('hidden');cloudStatus('Checking your local and cloud copies…');try{const [{data:row,error},localRaw]=await Promise.all([cloudClient.from('budget_data').select('payload,updated_at').eq('user_id',cloudUser.id).maybeSingle(),Promise.resolve(localPayload())]);if(error)throw error;const local=localRaw||{transactions:[],selected:'2026-11',received:false,dailyDate:'2026-11-01',config:{...defaults}};const cloud=row?.payload?{...row.payload,config:{...defaults,...(row.payload.config||{})}}:null;const localHas=meaningful(local),cloudHas=meaningful(cloud);let chosen=null;
  if(localHas&&cloudHas){const choice=prompt('Both this device and your Supabase account contain budget data. Nothing has been changed yet. Type one option exactly:\n\nMERGE — combine transactions from both copies (you will choose which budget settings to keep)\nLOCAL — use this device’s data for the cloud account\nCLOUD — replace this device’s data with the cloud copy\nCANCEL — leave syncing paused','MERGE');if(!choice||choice.trim().toUpperCase()==='CANCEL'){cloudStatus('Signed in, but syncing is paused. Your local and cloud data were left unchanged. Tap “Choose sync” when ready.');return;}const c=choice.trim().toUpperCase();if(c==='LOCAL')chosen=local;else if(c==='CLOUD')chosen=cloud;else if(c==='MERGE'){const merged=mergePayloads(local,cloud);const configChoice=prompt('The two copies may have different budget settings. Type LOCAL to keep this device’s settings, or CLOUD to keep the cloud settings.','LOCAL');if(!configChoice||!['LOCAL','CLOUD'].includes(configChoice.trim().toUpperCase())){cloudStatus('Sync paused. Your local and cloud data were left unchanged. Tap “Choose sync” to try again.');return;}chosen={...merged,config:{...(configChoice.trim().toUpperCase()==='CLOUD'?cloud.config:local.config)}};}else{cloudStatus('Unrecognized choice. No data was changed. Tap “Choose sync” to try again.');return;}
  }else if(localHas&&!cloudHas){if(!confirm('Your budget data is on this device, while the cloud copy is empty. Upload this device’s data to your account?')){cloudStatus('Signed in, but syncing is paused. Your local data was left unchanged. Tap “Choose sync” to try again.');return;}chosen=local;
@@ -744,6 +868,76 @@ if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("./service-worker.js").catch((err) => console.warn("Offline support could not be registered.", err));
   });
 }
+</script>
+<script>
+(() => {
+  const indicator = document.getElementById('pullRefreshIndicator');
+  const icon = document.getElementById('pullRefreshIcon');
+  const message = document.getElementById('pullRefreshText');
+
+  if (!indicator || typeof refreshBudgetData !== 'function') return;
+
+  let startY = 0;
+  let pulling = false;
+  let refreshing = false;
+  const threshold = 85;
+
+  document.addEventListener('touchstart', (event) => {
+    if (window.scrollY > 0 || refreshing) return;
+    if (event.touches.length !== 1) return;
+
+    startY = event.touches[0].clientY;
+    pulling = startY <= 80;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', (event) => {
+    if (!pulling || refreshing || window.scrollY > 0) return;
+
+    const distance = event.touches[0].clientY - startY;
+    if (distance <= 0) return;
+
+    indicator.classList.add('visible');
+    indicator.style.transform =
+      `translate(-50%, ${Math.min(distance - 45, 8)}px)`;
+
+    if (distance >= threshold) {
+      if (icon) icon.textContent = '↻';
+      if (message) message.textContent = 'Release to refresh';
+    } else {
+      if (icon) icon.textContent = '↓';
+      if (message) message.textContent = 'Pull down to refresh budget';
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', async (event) => {
+    if (!pulling || refreshing) return;
+
+    const endY = event.changedTouches[0]?.clientY ?? startY;
+    const distance = endY - startY;
+    pulling = false;
+    startY = 0;
+
+    if (distance >= threshold && window.scrollY <= 0) {
+      refreshing = true;
+      try {
+        await refreshBudgetData();
+      } finally {
+        refreshing = false;
+        indicator.style.transform = '';
+      }
+    } else {
+      indicator.classList.remove('visible');
+      indicator.style.transform = '';
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchcancel', () => {
+    pulling = false;
+    startY = 0;
+    indicator.classList.remove('visible');
+    indicator.style.transform = '';
+  }, { passive: true });
+})();
 </script>
 </body>
 </html>
