@@ -574,7 +574,7 @@ async function refreshBudgetData() {
     }, 1200);
   }
 }
-
+window.refreshBudgetData = refreshBudgetData;
 async function reconcileCloud(){if(!cloudClient||!cloudUser)return;cloudSyncReady=false;cloudButtons({signedIn:true,ready:false});$('syncChoices')?.classList.add('hidden');cloudStatus('Checking your local and cloud copies…');try{const [{data:row,error},localRaw]=await Promise.all([cloudClient.from('budget_data').select('payload,updated_at').eq('user_id',cloudUser.id).maybeSingle(),Promise.resolve(localPayload())]);if(error)throw error;const local=localRaw||{transactions:[],selected:'2026-11',received:false,dailyDate:'2026-11-01',config:{...defaults}};const cloud=row?.payload?{...row.payload,config:{...defaults,...(row.payload.config||{})}}:null;const localHas=meaningful(local),cloudHas=meaningful(cloud);let chosen=null;
  if(localHas&&cloudHas){const choice=prompt('Both this device and your Supabase account contain budget data. Nothing has been changed yet. Type one option exactly:\n\nMERGE — combine transactions from both copies (you will choose which budget settings to keep)\nLOCAL — use this device’s data for the cloud account\nCLOUD — replace this device’s data with the cloud copy\nCANCEL — leave syncing paused','MERGE');if(!choice||choice.trim().toUpperCase()==='CANCEL'){cloudStatus('Signed in, but syncing is paused. Your local and cloud data were left unchanged. Tap “Choose sync” when ready.');return;}const c=choice.trim().toUpperCase();if(c==='LOCAL')chosen=local;else if(c==='CLOUD')chosen=cloud;else if(c==='MERGE'){const merged=mergePayloads(local,cloud);const configChoice=prompt('The two copies may have different budget settings. Type LOCAL to keep this device’s settings, or CLOUD to keep the cloud settings.','LOCAL');if(!configChoice||!['LOCAL','CLOUD'].includes(configChoice.trim().toUpperCase())){cloudStatus('Sync paused. Your local and cloud data were left unchanged. Tap “Choose sync” to try again.');return;}chosen={...merged,config:{...(configChoice.trim().toUpperCase()==='CLOUD'?cloud.config:local.config)}};}else{cloudStatus('Unrecognized choice. No data was changed. Tap “Choose sync” to try again.');return;}
  }else if(localHas&&!cloudHas){if(!confirm('Your budget data is on this device, while the cloud copy is empty. Upload this device’s data to your account?')){cloudStatus('Signed in, but syncing is paused. Your local data was left unchanged. Tap “Choose sync” to try again.');return;}chosen=local;
@@ -879,7 +879,7 @@ if ("serviceWorker" in navigator) {
 
 window.addEventListener('load', () => {
   alert('Pull-down script loaded. Refresh function: ' +
-    typeof refreshBudgetData);
+    typeof window.refreshBudgetData);
 });
 
   let startY = 0;
@@ -925,7 +925,7 @@ window.addEventListener('load', () => {
     if (distance >= threshold && window.scrollY <= 0) {
       refreshing = true;
       try {
-        await refreshBudgetData();
+        await window.refreshBudgetData();
       } finally {
         refreshing = false;
         indicator.style.transform = '';
