@@ -875,7 +875,10 @@ if ("serviceWorker" in navigator) {
   const icon = document.getElementById('pullRefreshIcon');
   const message = document.getElementById('pullRefreshText');
 
-  if (!indicator || typeof refreshBudgetData !== 'function') return;
+  if (!indicator) return;
+
+console.log('Pull-down gesture script loaded');
+console.log('Refresh function available:', typeof refreshBudgetData);
 
   let startY = 0;
   let pulling = false;
