@@ -190,6 +190,51 @@ input[type="date"] {
   input[type="date"] { padding: 10px 6px; }
 }
 
+/* Mobile date-field sizing fix */
+input[type="date"],
+input[type="datetime-local"],
+input[type="month"] {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  display: block;
+  font-size: 16px;
+}
+
+/* Prevent form columns from forcing date fields wider */
+.field,
+.form-row,
+.form-group {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.field input[type="date"],
+.field input[type="datetime-local"],
+.field input[type="month"] {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+/* Keep form controls inside their cards on narrow phones */
+@media (max-width: 520px) {
+  .panel,
+  .card,
+  .field {
+    min-width: 0;
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    max-width: 100%;
+  }
+}
+
 </style>
 </head>
 <body>
